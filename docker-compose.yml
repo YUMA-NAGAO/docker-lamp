@@ -36,6 +36,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
+<<<<<<< HEAD
       - ./db/logs:/var/log/mysql
       - datastore:/var/lib/mysql
   # php Composer
@@ -48,6 +49,11 @@ services:
     ports:
       - "8025:8025"
 
+=======
+    - ./db/logs:/var/log/mysql
+    - datastore:/var/lib/mysql
+ 
+>>>>>>> a54de93b3657d8fec010f284a45e5fbad0010295
 volumes:
   cert:
   datastore:
