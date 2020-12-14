@@ -1,31 +1,20 @@
-FROM centos:7
-RUN yum update -y
-RUN yum -y remove httpd httpd.x86_64 httpd-tools.x86_64
+FROM httpd:2.4.41
 
-# install leatest apache2.4.*
-RUN yum install -y epel-release && \
-	yum -y install https://centos7.iuscommunity.org/ius-release.rpm && \
-	sed -i -e "s/enabled *= *1/enabled=0/g" /etc/yum.repos.d/ius.repo && \
-	sed -i -e "s/enabled *= *1/enabled=0/g" /etc/yum.repos.d/epel.repo
-RUN yum --enablerepo=epel -y install nghttp2 && \
-	yum -y install epel-release && \
-	yum -y install mailcap system-logos && \
-	yum -y install openssl wget && \
+RUN apt-get update -yqq \
+    && apt-get install -yqq --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists
 
-# Installing packages required for httpd 2.4.41
-	wget http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/b/brotli-1.0.7-5.el7.x86_64.rpm && \
-	rpm -Uvh brotli-1.0.7-5.el7.x86_64.rpm && \
-	yum -y install brotli && \
-	yum -y --disablerepo=base,extras,updates --enablerepo=ius install httpd mod_ssl && \
-	yum clean all
-RUN sed -i -e "s|LoadModule mpm_prefork_module modules/mod_mpm_prefork.so|#LoadModule mpm_prefork_module modules/mod_mpm_prefork.so|" /etc/httpd/conf.modules.d/00-mpm.conf && \
-	sed -i -e "s|#LoadModule mpm_event_module modules/mod_mpm_event.so|LoadModule mpm_event_module modules/mod_mpm_event.so|" /etc/httpd/conf.modules.d/00-mpm.conf
-# make SSL server certificate
+RUN sed -i -e "/mod_proxy.so/s/^#//" /usr/local/apache2/conf/httpd.conf \
+    && sed -i -e "/mod_proxy_fcgi.so/s/^#//" /usr/local/apache2/conf/httpd.conf \
+    && sed -i -e "/mod_ssl.so/s/^#//" /usr/local/apache2/conf/httpd.conf \
+    && echo "Include conf/extra/docker.conf" >> /usr/local/apache2/conf/httpd.conf
+
 RUN mkdir -p /etc/ssl/private && \
-	openssl req -new -newkey rsa:2048 -nodes -out /etc/ssl/private/server.csr -keyout /etc/ssl/private/server.key -subj "/C=/ST=/L=/O=/OU=/CN=*.lvh.me" && \
-	openssl x509 -days 3650 -req -signkey /etc/ssl/private/server.key -in /etc/ssl/private/server.csr -out /etc/ssl/private/server.crt
+    openssl req -new -newkey rsa:2048 -nodes -out /etc/ssl/private/server.csr -keyout /etc/ssl/private/server.key -subj "/C=/ST=/L=/O=/OU=/CN=*.lvh.me" && \
+    openssl x509 -days 3650 -req -signkey /etc/ssl/private/server.key -in /etc/ssl/private/server.csr -out /etc/ssl/private/server.crt
 
-COPY docker.conf /etc/httpd/conf.d/docker.conf
+
+COPY docker.conf /usr/local/apache2/conf/extra
 
 # dockre can not use systemd without permission, apahce is started with httpd
-CMD ["/usr/sbin/httpd", "-DFOREGROUND"]
+#CMD ["/usr/sbin/httpd", "-DFOREGROUND"]
